@@ -1,0 +1,65 @@
+VSARにおけるVRF構築の5階層構造
+システム基盤層: NX-OSの機能有効化とリソース制限。
+論理コンテキスト層: VRFインスタンスの生成と一意識別の定義。
+インターフェース割当層: 物理・論理リンクのVRFへの紐付け。
+ルーティング制御層: VRF固有のルーティングプロセスの動作。
+サービス冗長化層: HSRPによるデフォルトゲートウェイの保護。
+各階層の詳細とConfig例
+1. システム基盤層：機能の有効化とシステム制限
+VRFを運用するためのOSレベルの前提条件を整えます。リソース制限により、将来的な拡張性を担保しつつ、メモリ等のシステム資源を管理します。
+構築内容: BGP、VLANインターフェース、HSRPなどの機能を有効化し、VRFの最大数を定義します
+。
+Config例:
+---------------------------------------------
+!Command: show running-config !Time: Fri Jul 10 13:17:46 2026
+version 7.0(3)I7(5a) Bios:version 05.45 hostname w27snpnbs-vsar000100 vdc w27snpnbs-vsar000100 id 1 limit-resource vlan minimum 16 maximum 4094 limit-resource vrf minimum 2 maximum 4096 limit-resource port-channel minimum 0 maximum 511 limit-resource u4route-mem minimum 248 maximum 248 limit-resource u6route-mem minimum 96 maximum 96 limit-resource m4route-mem minimum 58 maximum 58 limit-resource m6route-mem minimum 8 maximum 8
+feature telnet feature ospf feature bgp feature ospfv3 feature interface-vlan feature hsrp feature lacp clock timezone JST 9 0
+---------------------------------------------
+
+2. 論理コンテキスト層：VRFインスタンスの生成
+物理的なルーターの中に、論理的に独立した「器」を作成します。
+構築内容: vrf context により名前を定義し、BGPプロセスで経路を識別するためのRD（Route Distinguisher）を割り当てます
+。
+--------------------------------------------
+no cdp enable ip prefix-list REDIST-TO-OSPFv2-STATIC seq 10 permit 10.250.80.48/28 ip prefix-list REDIST-TO-OSPFv2-STATIC seq 20 permit 10.250.80.176/28 ip prefix-list REDIST-TO-OSPFv2-STATIC seq 100 permit 124.245.207.0/26 ge 27 ip prefix-list REDIST-TO-OSPFv2-STATIC seq 110 permit 124.245.214.0/26 ge 27 ipv6 prefix-list REDIST-TO-BGPv6-OSPFv3 seq 10 permit 0::/0 ipv6 prefix-list REDIST-TO-OSPFv3-STATIC seq 10 permit 2001:a7ff:10a::/56 ge 57 route-map BGPv4_Direct_to_VSAR_Out permit 10 set origin igp route-map BGPv6_Direct_to_VSAR_Out permit 10 set origin igp route-map BGPv6_OSPFv3_to_VSAR_Out permit 10 match ipv6 address prefix-list REDIST-TO-BGPv6-OSPFv3 route-map OSPFv2_Direct_to_VSAR_Out permit 10 route-map OSPFv2_Static_to_VSAR_Out permit 10 match ip address prefix-list REDIST-TO-OSPFv2-STATIC route-map OSPFv3_BGPv6_to_VSAR_Out permit 10 route-map OSPFv3_Direct_to_VSAR_Out permit 10 route-map OSPFv3_Static_to_VSAR_Out permit 10 match ipv6 address prefix-list REDIST-TO-OSPFv3-STATIC route-map eBGPv4_AC_WGEM_In permit 10 set metric 100 route-map eBGPv4_AC_WGEM_Out permit 10 set metric 100 route-map eBGPv6_AC_WGEM_In permit 10 set metric 100 route-map eBGPv6_AC_WGEM_Out permit 10 set metric 100 route-map eBGPv6_SFER_Out permit 10 set community no-export vrf context U-AC_VRF800 rd 800:800 vrf context U-AC_VRF801 rd 801:801 vrf context U-AC_VRF802 rd 802:802 vrf context U-AC_VRF803 rd 803:803 vrf context U-AC_VRF804 rd 804:804 vrf context U-AC_VRF805 rd 805:805 vrf context U-AC_VRF806 rd 806:806 vrf context U-AC_VRF807 rd 807:807 vrf context U-AC_VRF808 rd 808:808 vrf context U-AC_VRF809 rd 809:809 vrf context U-AC_VRF810 rd 810:810 vrf context U-AC_VRF811 rd 811:811 vrf context U-AC_VRF812 rd 812:812 vrf context U-AC_VRF813 rd 813:813 vrf context U-AC_VRF814 rd 814:814 vrf context U-AC_VRF815 rd 815:815 vrf context U-AC_VRF832 rd 832:832 vrf context U-AC_VRF833 rd 833:833 vrf context U-AC_VRF834 rd 834:834 vrf context U-AC_VRF835 rd 835:835 vrf context U-AC_VRF836 rd 836:836 vrf context U-AC_VRF837 rd 837:837 vrf context U-AC_VRF838 rd 838:838 vrf context U-AC_VRF839 rd 839:839 vrf context U-AC_VRF840 rd 840:840 vrf context U-AC_VRF841 rd 841:841 vrf context U-AC_VRF842 rd 842:842 vrf context U-AC_VRF843 rd 843:843 vrf context U-AC_VRF844 rd 844:844 vrf context U-AC_VRF845 rd 845:845 vrf context U-AC_VRF846 rd 846:846 vrf context U-AC_VRF847 rd 847:847 vrf context U-AC_VRF864 rd 864:864 vrf context U-AC_VRF865 rd 865:865 vrf context U-AC_VRF866 rd 866:866 vrf context U-AC_VRF867 rd 867:867 vrf context U-AC_VRF868 rd 868:868 vrf context U-AC_VRF869 rd 869:869 vrf context U-AC_VRF870 rd 870:870 vrf context U-AC_VRF871 rd 871:871 vrf context U-AC_VRF872 rd 872:872 vrf context U-AC_VRF873 rd 873:873 vrf context U-AC_VRF874 rd 874:874 vrf context U-AC_VRF875 rd 875:875 vrf context U-AC_VRF876 rd 876:876 vrf context U-AC_VRF877 rd 877:877 vrf context U-AC_VRF878 rd 878:878 vrf context U-AC_VRF879 rd 879:879 vrf context U-AC_VRF880 rd 880:880 vrf context U-AC_VRF881 rd 881:881 vrf context U-AC_VRF882 rd 882:882 vrf context U-AC_VRF883 rd 883:883 vrf context U-AC_VRF884 rd 884:884 vrf context U-AC_VRF885 rd 885:885 vrf context U-AC_VRF886 rd 886:886 vrf context U-AC_VRF887 rd 887:887 vrf context U-AC_VRF888 rd 888:888 vrf context U-AC_VRF889 rd 889:889 vrf context U-AC_VRF890 rd 890:890 vrf context U-AC_VRF891 rd 891:891 vrf context U-AC_VRF892 rd 892:892 vrf context U-AC_VRF893 rd 893:893 vrf context U-AC_VRF894 rd 894:894 vrf context U-AC_VRF895 rd 895:895 vrf context U-AC_VRF896 rd 896:896 vrf context U-AC_VRF897 rd 897:897 vrf context U-AC_VRF898 rd 898:898 vrf context U-AC_VRF899 rd 899:899 vrf context U-AC_VRF900 rd 900:900 vrf context U-AC_VRF901 rd 901:901 vrf context U-AC_VRF902 rd 902:902 vrf context U-AC_VRF903 rd 903:903 vrf context U-AC_VRF904 rd 904:904 vrf context U-AC_VRF905 rd 905:905 vrf context U-AC_VRF906 rd 906:906 vrf context U-AC_VRF907 rd 907:907 vrf context U-AC_VRF908 rd 908:908 vrf context U-AC_VRF909
+-------------------------------------------
+Config例:
+3. インターフェース割当層：L3境界の定義
+作成したVRFに対し、実際の通信経路となるインターフェース（SVI、Loopback、サブインターフェース）を割り当てます。
+構築内容: 各インターフェースに vrf member を適用し、その後にIPアドレスを設定します
+。
+------------------------------
+interface Vlan627 description To_SCCE(M-EMS0) no shutdown no ip redirects ip address 10.250.80.194/27 hsrp version 2 hsrp delay reload 90 hsrp 627 authentication md5 key-string hsrpkey preempt delay minimum 10 priority 200 timers 1 4 ip 10.250.80.193 track 2 decrement 60 track 3 decrement 60
+interface Vlan800 description To_UNI_SBC(U-AC)_VRF_U-AC_VRF800 no shutdown vrf member U-AC_VRF800 no ip redirects ip address 122.50.29.2/26 ipv6 address 2001:a7ff:10b::2/64 ipv6 nd suppress-ra no ipv6 redirects hsrp version 2 hsrp delay reload 90 hsrp 800 authentication md5 key-string hsrpkey preempt delay minimum 10 priority 200 timers 1 4 ip 122.50.29.1 track 1 decrement 60 track 2 decrement 60 hsrp 800 ipv6 authentication md5 key-string hsrpkey preempt delay minimum 10 priority 200 timers 1 4 ip 2001:a7ff:10b::1 track 1 decrement 60 track 2 decrement 60
+-----------------------------
+Config例:
+4. ルーティング制御層：VRF固有のBGPプロセス
+各VRFで独立したルーティングテーブルを構築し、外部（WGEM等）と経路交換を行います。
+構築内容: BGPプロセス配下にVRF設定ブロックを作成し、直結経路の再配布やサマライゼーション（経路集約）を設定します
+。
+---------------------------------------------------
+!Command: show running-config !Time: Fri Jul 10 13:17:46 2026
+version 7.0(3)I7(5a) Bios:version 05.45 hostname w27snpnbs-vsar000100 vdc w27snpnbs-vsar000100 id 1 limit-resource vlan minimum 16 maximum 4094 limit-resource vrf minimum 2 maximum 4096 limit-resource port-channel minimum 0 maximum 511 limit-resource u4route-mem minimum 248 maximum 248 limit-resource u6route-mem minimum 96 maximum 96 limit-resource m4route-mem minimum 58 maximum 58 limit-resource m6route-mem minimum 8 maximum 8
+feature telnet feature ospf feature bgp feature ospfv3 feature interface-vlan feature hsrp feature lacp clock timezone JST 9 0
+---------------------------------------------------
+Config例:
+5. サービス冗長化層：HSRPによるゲートウェイ保護
+テナント（VRF）単位で、エンドユーザーのデフォルトゲートウェイを冗長化します。
+構築内容: SVI上でHSRPを構成し、仮想IP（VIP）の定義と、上位リンクの状態を監視する track オブジェクトとの連動を行います
+------------------------------
+※3と同様
+interface Vlan627 description To_SCCE(M-EMS0) no shutdown no ip redirects ip address 10.250.80.194/27 hsrp version 2 hsrp delay reload 90 hsrp 627 authentication md5 key-string hsrpkey preempt delay minimum 10 priority 200 timers 1 4 ip 10.250.80.193 track 2 decrement 60 track 3 decrement 60
+interface Vlan800 description To_UNI_SBC(U-AC)_VRF_U-AC_VRF800 no shutdown vrf member U-AC_VRF800 no ip redirects ip address 122.50.29.2/26 ipv6 address 2001:a7ff:10b::2/64 ipv6 nd suppress-ra no ipv6 redirects hsrp version 2 hsrp delay reload 90 hsrp 800 authentication md5 key-string hsrpkey preempt delay minimum 10 priority 200 timers 1 4 ip 122.50.29.1 track 1 decrement 60 track 2 decrement 60 hsrp 800 ipv6 authentication md5 key-string hsrpkey preempt delay minimum 10 priority 200 timers 1 4 ip 2001:a7ff:10b::1 track 1 decrement 60 track 2 decrement 60
+---------------------------------
+。
+Config例:
+体系的まとめ
+この構築フローは、**「器を作る（VRF）→ リンクを繋ぐ（Member）→ 経路を流す（BGP）→ 出口を守る（HSRP）」**という一貫した仕組みとして体系化されています。
+水平的には U-AC_VRF800 から U-AC_VRF927 まで100以上のVRFが同一構造で並列配置されており
+、各VRFはRDによって完全に分離されたルーティング空間を保持しています。この構造化により、特定テナントの障害が他のテナントへ波及することを物理・論理の両面から防ぐ強固なマルチテナント基盤が実現されています。
+
+
+変更
+　ここだと書き込みがOK
+
+4時に書き込み
