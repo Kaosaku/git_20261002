@@ -1,0 +1,1 @@
+MsgBox, % "AutoHotkey Version: " . A_AhkVersion
